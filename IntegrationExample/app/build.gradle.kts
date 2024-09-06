@@ -4,17 +4,16 @@ plugins {
 }
 
 android {
-    namespace = "io.linksquared.example"
+    namespace = "io.linksquared.integration_example"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "io.linksquared.example"
+        applicationId = "io.linksquared.integration_example"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
-        missingDimensionStrategy("default", "envDevelopment")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -41,7 +40,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.0"
+        kotlinCompilerExtensionVersion = "1.5.1"
     }
     packaging {
         resources {
@@ -60,7 +59,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(project(":Linksquared"))
+
+    implementation("io.linksquared:Linksquared:1.0.1")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

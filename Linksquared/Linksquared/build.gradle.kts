@@ -1,9 +1,20 @@
+import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("kotlin-parcelize")
     id("maven-publish")
+    id("signing")
+    id("com.vanniktech.maven.publish") version "0.28.0"
 }
+
+val BOOLEAN = "boolean"
+val STRING = "String"
+val TRUE = "true"
+val FALSE = "false"
+val SERVER_URL = "SERVER_URL"
 
 android {
     namespace = "io.linksquared"
@@ -17,37 +28,46 @@ android {
     }
 
     buildTypes {
+
+        val SERVER_URL_PRODUCTION = "\"https://sdk.sqd.link/api/v1/sdk/\""
+
+        debug {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
+            buildConfigField(STRING, SERVER_URL, SERVER_URL_PRODUCTION)
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-        }
-    }
 
-    productFlavors {
-        val BOOLEAN = "boolean"
-        val STRING = "String"
-        val TRUE = "true"
-        val FALSE = "false"
-        val SERVER_URL = "SERVER_URL"
-
-        val SERVER_URL_DEVELOPMENT = "\"https://sdk.sqd.link/api/v1/sdk/\""
-        val SERVER_URL_PRODUCTION = "\"https://sdk.sqd.link/api/v1/sdk/\""
-
-        create("envDevelopment") {
-            buildConfigField(STRING, SERVER_URL, SERVER_URL_DEVELOPMENT)
-            dimension = "default"
-        }
-
-        create("envProd") {
             buildConfigField(STRING, SERVER_URL, SERVER_URL_PRODUCTION)
-            dimension = "default"
         }
     }
 
-    flavorDimensions.add("default")
+//    productFlavors {
+//        val SERVER_URL_DEVELOPMENT = "\"https://sdk.sqd.link/api/v1/sdk/\""
+//        val SERVER_URL_PRODUCTION = "\"https://sdk.sqd.link/api/v1/sdk/\""
+//
+//        create("envDevelopment") {
+//            buildConfigField(STRING, SERVER_URL, SERVER_URL_DEVELOPMENT)
+//            dimension = "default"
+//        }
+//
+//        create("envProd") {
+//            buildConfigField(STRING, SERVER_URL, SERVER_URL_PRODUCTION)
+//            dimension = "default"
+//        }
+//    }
+//
+//    flavorDimensions.add("default")
 
     buildFeatures {
         buildConfig = true
@@ -82,7 +102,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
 
     //noinspection GradleDynamicVersion
-    implementation("com.android.installreferrer:installreferrer:2.+")
+    implementation(libs.installreferrer)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -92,7 +112,7 @@ dependencies {
 
 private val libraryGroupId = "io.linksquared"
 private val libraryArtifactId = "Linksquared"
-private val libraryVersion = "1.0.0"
+private val libraryVersion = "1.0.1"
 
 project.afterEvaluate {
     publishing {
@@ -101,17 +121,13 @@ project.afterEvaluate {
                 groupId = libraryGroupId
                 artifactId = libraryArtifactId
                 version = libraryVersion
-                artifact(tasks["bundleEnvProdReleaseAar"])
+                //artifact(tasks["bundleEnvProdReleaseAar"])
+                artifact(tasks["bundleReleaseAar"])
                 artifact(tasks["androidSourcesJar"])
 
-                pom.withXml {
-                    val dependenciesNode = asNode().appendNode("dependencies")
-                    configurations.implementation.get().allDependencies.forEach { dependency ->
-                        val dependencyNode = dependenciesNode.appendNode("dependency")
-                        dependencyNode.appendNode("groupId", dependency.group)
-                        dependencyNode.appendNode("artifactId", dependency.name)
-                        dependencyNode.appendNode("version", dependency.version)
-                    }
+                pom {
+                    name.set("Linksquared")
+                    description.set("Linksquared is a powerful SDK that enables deep linking and universal linking within your mobile and web applications.")
                 }
             }
         }
@@ -129,4 +145,45 @@ tasks.register("androidSourcesJar", Jar::class) {
         from(sourceSets["main"].java.srcDirs)
         from(kotlin.sourceSets["main"].kotlin.srcDirs)
     }
+}
+
+mavenPublishing {
+    // Define coordinates for the published artifact
+    coordinates(
+        groupId = libraryGroupId,
+        artifactId = libraryArtifactId,
+        version = libraryVersion
+    )
+
+    // Configure POM metadata for the published artifact
+    pom {
+        name.set("Linksquared")
+        description.set("Linksquared is a powerful SDK that enables deep linking and universal linking within your mobile and web applications.")
+        inceptionYear.set("2024")
+        url.set("https://github.com/linksquared/Linksquared-Android")
+        licenses {
+            license {
+                name.set("The Apache Software License, Version 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+            }
+        }
+        // Specify developers information
+        developers {
+            developer {
+                id.set("chelemen-razvan")
+                name.set("Chelemen Razvan")
+                email.set("razvan@appssemble.com")
+            }
+        }
+        // Specify SCM information
+        scm {
+            url.set("https://github.com/linksquared/Linksquared-Android")
+        }
+
+    }
+
+    // Configure publishing to Maven Central
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    // Enable GPG signing for all publications
+    signAllPublications()
 }
