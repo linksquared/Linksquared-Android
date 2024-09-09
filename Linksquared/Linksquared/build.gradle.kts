@@ -112,7 +112,7 @@ dependencies {
 
 private val libraryGroupId = "io.linksquared"
 private val libraryArtifactId = "Linksquared"
-private val libraryVersion = "1.0.1"
+private val libraryVersion = "1.0.3"
 
 project.afterEvaluate {
     publishing {
