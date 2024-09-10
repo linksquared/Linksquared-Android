@@ -25,7 +25,7 @@
             </intent-filter>
 
             <intent-filter>
-                <data android:scheme="demosf0e8afa597ab" android:host="open" />
+                <data android:scheme="testap184a6c2fabed" android:host="open" />
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -35,7 +35,14 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="democ7c7.sqd.link" />
+                <data android:scheme="https" android:host="testacf2.sqd.link" />
+            </intent-filter>
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="testacf2.test-sqd.link" />
             </intent-filter>
         </activity>
     </application>
