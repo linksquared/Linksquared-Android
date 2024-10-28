@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="linksquared_transparent">#00000000</color>
+    <color name="linksquared_white">#FFFFFFFF</color>
+    <color name="linksquared_accent">#212123</color>
+    <color name="linksquared_background_deep">#1A1D24</color>
+    <color name="linksquared_border">#5454585C</color>
+    <color name="linksquared_main_text">#FFFFFFFF</color>
+    <color name="linksquared_secondary_text">#97989C</color>
+    <color name="linksquared_notification_red">#FF1A1A</color>
+    <color name="linksquared_notification_icon_tint">#97989C</color>
+</resources>

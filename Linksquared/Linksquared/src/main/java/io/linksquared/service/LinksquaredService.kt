@@ -18,6 +18,10 @@ import io.linksquared.model.GenerateLinkResponse
 import io.linksquared.model.GetDeviceResponse
 import io.linksquared.model.LogLevel
 import io.linksquared.model.UpdateAttributesRequest
+import io.linksquared.model.notifications.MarkNotificationAsReadRequest
+import io.linksquared.model.notifications.NotificationsRequest
+import io.linksquared.model.notifications.NotificationsResponse
+import io.linksquared.model.notifications.NumberOfUnreadNotificationsResponse
 import io.linksquared.settings.LinksquaredSettings
 import io.linksquared.utils.LSJsonDateTypeAdapterFactory
 import io.linksquared.utils.LSResult
@@ -233,13 +237,15 @@ class LinksquaredService(val context: Context, val apiKey: String, val linksquar
         }
     }
 
-    suspend fun updateAttributes(identifier: String? = null, attributes: Map<String, Any>? = null): LSResult<Boolean> {
-        DebugLogger.instance.log(LogLevel.INFO, "Set attributes - $identifier $attributes")
+    suspend fun updateAttributes(identifier: String? = null, attributes: Map<String, Any>? = null, pushToken: String? = null): LSResult<Boolean> {
+        DebugLogger.instance.log(LogLevel.INFO, "Set attributes - $identifier $attributes push token: $pushToken")
 
         var retryCount = 0
         while (true) {
             try {
-                val request = UpdateAttributesRequest(identifier, attributes)
+                val request = UpdateAttributesRequest( sdkIdentifier = identifier,
+                    sdkAttributes = attributes,
+                    pushToken = pushToken)
                 val response = linksquaredApi.updateAttributes(request)
                 if (response.isSuccessful) {
                     val body = response.body()
@@ -284,6 +290,124 @@ class LinksquaredService(val context: Context, val apiKey: String, val linksquar
                     DebugLogger.instance.log(LogLevel.INFO, "Getting device last seen - Failed. ${error.error}")
 
                     return LSResult.Error(java.io.IOException("Failed to get device last seen. ${error.error}"))
+                }
+            } catch (e: Exception) { }
+
+            delay(if (retryCount < EAGER_RETRY_COUNT) EAGER_RETRY_FALLBACK_TIME else RETRY_FALLBACK_TIME)
+            retryCount++
+        }
+    }
+
+    suspend fun notifications(page: Int): LSResult<NotificationsResponse> {
+        DebugLogger.instance.log(LogLevel.INFO, "Getting all the notifications")
+
+        var retryCount = 0
+        while (true) {
+            try {
+                val request = NotificationsRequest(page = page)
+                val response = linksquaredApi.notifications(request)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    body?.let {
+                        DebugLogger.instance.log(LogLevel.INFO, "Getting all the notifications - Successful")
+
+                        return LSResult.Success(it)
+                    }
+                }
+
+                response.errorBody()?.string()?.let { responseString ->
+                    val error = gson.fromJson(responseString, ErrorMessage::class.java)
+                    DebugLogger.instance.log(LogLevel.INFO, "Getting all the notifications - Failed. ${error.error}")
+
+                    return LSResult.Error(java.io.IOException("Failed getting all the notifications. ${error.error}"))
+                }
+            } catch (e: Exception) { }
+
+            delay(if (retryCount < EAGER_RETRY_COUNT) EAGER_RETRY_FALLBACK_TIME else RETRY_FALLBACK_TIME)
+            retryCount++
+        }
+    }
+
+    suspend fun numberOfUnreadNotifications(): LSResult<NumberOfUnreadNotificationsResponse> {
+        DebugLogger.instance.log(LogLevel.INFO, "Get unread messages")
+
+        var retryCount = 0
+        while (true) {
+            try {
+                val response = linksquaredApi.numberOfUnreadNotifications()
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    body?.let {
+                        DebugLogger.instance.log(LogLevel.INFO, "Get unread messages - Successful")
+
+                        return LSResult.Success(it)
+                    }
+                }
+
+                response.errorBody()?.string()?.let { responseString ->
+                    val error = gson.fromJson(responseString, ErrorMessage::class.java)
+                    DebugLogger.instance.log(LogLevel.INFO, "Get unread messages - Failed. ${error.error}")
+
+                    return LSResult.Error(java.io.IOException("Failed get unread messages. ${error.error}"))
+                }
+            } catch (e: Exception) { }
+
+            delay(if (retryCount < EAGER_RETRY_COUNT) EAGER_RETRY_FALLBACK_TIME else RETRY_FALLBACK_TIME)
+            retryCount++
+        }
+    }
+
+    suspend fun markNotificationAsRead(notificationId: Int): LSResult<Boolean> {
+        DebugLogger.instance.log(LogLevel.INFO, "Mark notification as read")
+
+        var retryCount = 0
+        while (true) {
+            try {
+                val request = MarkNotificationAsReadRequest(notificationId = notificationId)
+                val response = linksquaredApi.markNotificationAsRead(request = request)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    body?.let {
+                        DebugLogger.instance.log(LogLevel.INFO, "Mark notification as read - Successful")
+
+                        return LSResult.Success(true)
+                    }
+                }
+
+                response.errorBody()?.string()?.let { responseString ->
+                    val error = gson.fromJson(responseString, ErrorMessage::class.java)
+                    DebugLogger.instance.log(LogLevel.INFO, "Mark notification as read - Failed. ${error.error}")
+
+                    return LSResult.Error(java.io.IOException("Failed to mark notification as read. ${error.error}"))
+                }
+            } catch (e: Exception) { }
+
+            delay(if (retryCount < EAGER_RETRY_COUNT) EAGER_RETRY_FALLBACK_TIME else RETRY_FALLBACK_TIME)
+            retryCount++
+        }
+    }
+
+    suspend fun notificationsToDisplayAutomatically(): LSResult<NotificationsResponse> {
+        DebugLogger.instance.log(LogLevel.INFO, "Notifications to display automatically")
+
+        var retryCount = 0
+        while (true) {
+            try {
+                val response = linksquaredApi.notificationsToDisplayAutomatically()
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    body?.let {
+                        DebugLogger.instance.log(LogLevel.INFO, "Getting notifications to display automatically - Successful")
+
+                        return LSResult.Success(it)
+                    }
+                }
+
+                response.errorBody()?.string()?.let { responseString ->
+                    val error = gson.fromJson(responseString, ErrorMessage::class.java)
+                    DebugLogger.instance.log(LogLevel.INFO, "Getting notifications to display automatically - Failed. ${error.error}")
+
+                    return LSResult.Error(java.io.IOException("Failed getting notifications to display automatically. ${error.error}"))
                 }
             } catch (e: Exception) { }
 

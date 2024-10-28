@@ -11,7 +11,7 @@ fun Throwable.getStackTraceAsString(): String {
 }
 
 enum class LinksquaredErrorCode {
-    LINK_GENERATION_ERROR, SDK_NOT_INITIALIZED
+    LINK_GENERATION_ERROR, SDK_NOT_INITIALIZED, NOTIFICATIONS_ERROR
 }
 
 class LinksquaredException(message: String?) : Exception(message) {

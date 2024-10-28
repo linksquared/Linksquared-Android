@@ -1,5 +1,6 @@
 import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 import com.vanniktech.maven.publish.SonatypeHost
+import org.jetbrains.kotlin.kapt3.base.Kapt.kapt
 
 plugins {
     alias(libs.plugins.android.library)
@@ -71,6 +72,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        viewBinding = true
     }
 
     compileOptions {
@@ -84,6 +86,7 @@ android {
 }
 
 dependencies {
+    compileOnly(libs.firebase.messaging.ktx)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -103,6 +106,8 @@ dependencies {
 
     //noinspection GradleDynamicVersion
     implementation(libs.installreferrer)
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -112,7 +117,7 @@ dependencies {
 
 private val libraryGroupId = "io.linksquared"
 private val libraryArtifactId = "Linksquared"
-private val libraryVersion = "1.0.3"
+private val libraryVersion = "1.0.4"
 
 project.afterEvaluate {
     publishing {

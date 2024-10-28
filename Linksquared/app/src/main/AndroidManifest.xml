@@ -13,6 +13,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LinksquaredTestApp"
         tools:targetApi="31">
+
+        <meta-data
+            android:name="io.linksquared.NotificationIconSmall"
+            android:value="ic_notification_small"/> <!-- name of your file in the drawable directory without the file extension. -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

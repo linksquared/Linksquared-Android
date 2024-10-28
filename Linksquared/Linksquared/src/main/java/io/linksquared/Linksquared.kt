@@ -13,8 +13,10 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import io.linksquared.handlers.ActivityProvider
 import io.linksquared.handlers.LinksquaredContext
 import io.linksquared.handlers.LinksquaredManager
+import io.linksquared.handlers.NotificationsManager
 import io.linksquared.model.DebugLogger
 import io.linksquared.model.DeeplinkDetails
 import io.linksquared.model.LogLevel
@@ -30,6 +32,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.Serializable
@@ -45,7 +48,11 @@ fun interface LinksquaredLinkGenerationListener {
     fun onLinkGenerated(link:String?, error: LinksquaredException?)
 }
 
-public class Linksquared {
+fun interface LinksquaredNotificationsListener {
+    fun onAutomaticNotificationClosed(isLast:Boolean)
+}
+
+public class Linksquared: ActivityProvider {
 
     companion object {
         private val instance = Linksquared()
@@ -73,6 +80,13 @@ public class Linksquared {
             get() = instance.identifier
             set(value) {
                 instance.identifier = value
+            }
+
+        /// The push token for the user. This property allows getting and setting the push notification token.
+        var pushToken: String?
+            get() = instance.pushToken
+            set(value) {
+                instance.pushToken = value
             }
 
         /// The attributes for the current user. This will be visible in the linksquared dashboard.
@@ -157,6 +171,19 @@ public class Linksquared {
         private fun checkConfiguration() {
             instance.checkConfiguration()
         }
+
+        fun setOnAutomaticNotificationsListener(listener: LinksquaredNotificationsListener) {
+            instance.setOnAutomaticNotificationsListener(listener = listener)
+        }
+
+
+        fun displayMessagesFragment(onDismissed: (()->Unit)?) {
+            instance.displayMessagesFragment(onDismissed)
+        }
+
+        suspend fun numberOfUnreadMessages(): Int? {
+            return instance.numberOfUnreadMessages()
+        }
     }
 
     var openedLinkDetails: DeeplinkDetails? by flowDelegate(null)
@@ -168,6 +195,13 @@ public class Linksquared {
             linksquaredManager?.identifier = value
         }
 
+    /// The push token for the user. This property allows getting and setting the push notification token.
+    var pushToken: String?
+        get() = linksquaredManager?.pushToken
+        set(value) {
+            linksquaredManager?.pushToken = value
+        }
+
     /// The attributes for the current user. This will be visible in the linksquared dashboard.
     private var attributes: Map<String, Any>?
         get() = linksquaredManager?.attributes
@@ -176,6 +210,7 @@ public class Linksquared {
         }
 
     private var linksquaredManager: LinksquaredManager? = null
+    private var notificationsManager: NotificationsManager? = null
 
     // This is used for linking the SDK to your account
     private var apiKey: String? = null
@@ -183,8 +218,16 @@ public class Linksquared {
     private var application: Application? = null
 
     private var deeplinkListener: LinksquaredDeeplinkListener? = null
+    private var linksquaredNotificationsListener: LinksquaredNotificationsListener? = null
 
-    private var activityReference: WeakReference<Activity>? = null
+    private var launcherActivityReference: WeakReference<Activity>? = null
+    private var currentActivityReference: WeakReference<Activity>? = null
+        set(value) {
+            field = value
+            if ((field != null) && (linksquaredManager?.authenticated == true)) {
+                notificationsManager?.displayAutomaticNotificationsIfNeeded()
+            }
+        }
 
     private var linksquaredContext = LinksquaredContext()
 
@@ -194,24 +237,34 @@ public class Linksquared {
         private var numStarted = 0
 
         override fun onActivityCreated(p0: Activity, p1: Bundle?) {}
-        override fun onActivityStarted(p0: Activity) {
+        override fun onActivityStarted(activity: Activity) {
+            currentActivityReference = WeakReference(activity)
+
             if (numStarted == 0) {
                 // App is in foreground
                 onAppForegrounded()
             }
             numStarted++
         }
-        override fun onActivityResumed(p0: Activity) {}
-        override fun onActivityPaused(p0: Activity) {}
-        override fun onActivityStopped(p0: Activity) {
+        override fun onActivityResumed(activity: Activity) {
+            currentActivityReference = WeakReference(activity)
+        }
+        override fun onActivityPaused(activity: Activity) {
+            if (currentActivityReference?.get() == activity) currentActivityReference = null
+        }
+        override fun onActivityStopped(activity: Activity) {
+            if (currentActivityReference?.get() == activity) currentActivityReference = null
+
             numStarted--
             if (numStarted == 0) {
                 // App is in background
                 onAppBackgrounded()
             }
         }
-        override fun onActivitySaveInstanceState(p0: Activity, p1: Bundle) {}
-        override fun onActivityDestroyed(p0: Activity) {}
+        override fun onActivitySaveInstanceState(activity: Activity, p1: Bundle) {}
+        override fun onActivityDestroyed(activity: Activity) {
+            if (currentActivityReference?.get() == activity) currentActivityReference = null
+        }
 
         private fun onAppForegrounded() {
             // App moved to the foreground
@@ -238,6 +291,11 @@ public class Linksquared {
             application = application,
             linksquaredContext = linksquaredContext,
             apiKey = apiKey)
+
+        notificationsManager = NotificationsManager(context = application.applicationContext,
+            linksquaredContext = linksquaredContext,
+            apiKey = apiKey,
+            activityProvider = this)
 
         checkConfiguration()
         application.registerActivityLifecycleCallbacks(applicationLifecycleObserver)
@@ -332,7 +390,7 @@ public class Linksquared {
     }
 
     fun onStart() {
-        handleIntent(activityReference?.get()?.intent)
+        handleIntent(launcherActivityReference?.get()?.intent)
     }
 
     fun onNewIntent(intent: Intent?) {
@@ -340,8 +398,31 @@ public class Linksquared {
     }
 
     fun setOnDeeplinkReceivedListener(launcherActivity: Activity, listener: LinksquaredDeeplinkListener) {
-        activityReference = WeakReference(launcherActivity)
+        launcherActivityReference = WeakReference(launcherActivity)
         deeplinkListener = listener
+    }
+
+    fun setOnAutomaticNotificationsListener(listener: LinksquaredNotificationsListener) {
+        linksquaredNotificationsListener = listener
+    }
+
+    fun displayMessagesFragment(onDismissed: (()->Unit)?): Boolean {
+        notificationsManager?.let { notificationsManager ->
+            return notificationsManager.displayNotificationsViewController(onDismissed = onDismissed)
+        } ?: run {
+            return false
+        }
+    }
+
+    suspend fun numberOfUnreadMessages(): Int? {
+        val maxRetry = 20
+        var count = 0
+        while (linksquaredManager?.authenticated != true && count < maxRetry) {
+            delay(200L * count)
+            count += 1
+        }
+
+        return notificationsManager?.numberOfUnreadNotifications()
     }
 
     private fun checkConfiguration() {
@@ -351,6 +432,7 @@ public class Linksquared {
                     val response = manager.authenticate()
                     if (response) {
                         manager.start()
+                        notificationsManager?.displayAutomaticNotificationsIfNeeded()
                     }
                 }
             } ?: run {
@@ -364,7 +446,7 @@ public class Linksquared {
     private fun handleIntent(intent: Intent?) {
         intent?.let { intent ->
             linksquaredManager?.let { linksquaredManager ->
-                (activityReference?.get() as? LifecycleOwner)?.let { lifecycleOwner ->
+                (launcherActivityReference?.get() as? LifecycleOwner)?.let { lifecycleOwner ->
                     lifecycleOwner.lifecycleScope.launch(linksquaredContext.serialDispatcher) {
                         authenticationJob?.join()
                             val result = linksquaredManager.handleIntent(intent)
@@ -386,6 +468,14 @@ public class Linksquared {
                 DebugLogger.instance.log(LogLevel.ERROR,"The SDK is not properly configured. Call Linksquared.configure(application: Application, apiKey: String) first.")
             }
         }
+    }
+
+    override fun requireActivity(): Activity? {
+        return currentActivityReference?.get()
+    }
+
+    override fun requireNotificationsListener(): LinksquaredNotificationsListener? {
+        return linksquaredNotificationsListener
     }
 
 }

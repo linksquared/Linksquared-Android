@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "715837558910",
+    "project_id": "linksquared-testapp",
+    "storage_bucket": "linksquared-testapp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:715837558910:android:19b61715fb5b920200082f",
+        "android_client_info": {
+          "package_name": "io.linksquared.example"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbPmbI8wIWGaqLrhGn63XIbbShaClSZ2Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,12 +1,17 @@
 package io.linksquared.example
 
+import android.Manifest
+import android.content.ContentValues.TAG
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Parcel
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,15 +31,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.messaging.FirebaseMessaging
 import io.linksquared.Linksquared
 import io.linksquared.LinksquaredDeeplinkListener
+import io.linksquared.LinksquaredNotificationsListener
 import io.linksquared.example.ui.theme.LinksquaredTestAppTheme
 import io.linksquared.utils.flow
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val viewModel: MainViewModel by viewModels()
+
+    private val requestNotificationsPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // FCM SDK (and your app) can post notifications.
+            updateFCMToken()
+        } else {
+            // TODO: Inform user that that your app will not show notifications.
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +65,8 @@ class MainActivity : ComponentActivity() {
                 CenteredTextViewAndButton(viewModel)
             }
         }
+
+        askNotificationPermission()
 
         Linksquared.setOnDeeplinkReceivedListener(this) { link, payload ->
             val message = "Got link from listener: $link payload: $payload"
@@ -57,6 +80,18 @@ class MainActivity : ComponentActivity() {
                 Log.d("MainActivity", message)
             }
         }
+
+        // Notifications
+
+        Linksquared.setOnAutomaticNotificationsListener { isLast ->
+            Log.d("MainActivity", "Dismissed automatic notification is last: $isLast")
+        }
+
+        lifecycleScope.launch {
+            val result = Linksquared.numberOfUnreadMessages()
+            Log.d("MainActivity", "Number of unread notifications: $result")
+        }
+
     }
 
     override fun onStart() {
@@ -69,6 +104,34 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
 
         Linksquared.onNewIntent(intent)
+    }
+
+    private fun askNotificationPermission() {
+        // This is only necessary for API level >= 33 (TIRAMISU)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) { } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                requestNotificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                requestNotificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        updateFCMToken()
+    }
+
+    private fun updateFCMToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.d("MainActivity", "Fetching FCM registration token failed", task.exception)
+            }
+
+            // Get new FCM registration token
+            val token = task.result
+            Log.d("MainActivity","FCM token: $token")
+            Linksquared.pushToken = token
+        })
     }
 }
 
@@ -110,13 +173,17 @@ fun CenteredTextViewAndButton(viewModel: MainViewModel) {
 //                        }
 //                    })
 
-                coroutineScope.launch {
-                    val link = Linksquared.generateLink(title = "Test title",
-                        subtitle = "Test subtitle",
-                        imageURL = null,
-                        data = mapOf("param1" to "Test value"),
-                        tags = null)
-                    generatedLinkState.value = link
+//                coroutineScope.launch {
+//                    val link = Linksquared.generateLink(title = "Test title",
+//                        subtitle = "Test subtitle",
+//                        imageURL = null,
+//                        data = mapOf("param1" to "Test value"),
+//                        tags = null)
+//                    generatedLinkState.value = link
+//                }
+
+                Linksquared.displayMessagesFragment {
+                    Log.d("MainActivity", "Notifications dismissed")
                 }
             }) {
                 Text(text = "Generate link")

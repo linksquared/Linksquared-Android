@@ -14,7 +14,7 @@ class MainApplication : Application() {
         // TODO: Replace with your own API Key
         val API_KEY = "testap_6d980b2dd52c8665c48b6be13d0dafb9672327ae9d3436df8a191e6acebe6096"
         Linksquared.configure(this, API_KEY)
-        Linksquared.useTestEnvironment = true
+        //Linksquared.useTestEnvironment = true
 
         //Optionally, you can adjust the debug level for logging:
         Linksquared.setDebug(LogLevel.INFO)

@@ -14,6 +14,7 @@ class LinksquaredContext {
     val settings = LinksquaredSettings()
     var linksquaredId: String? = null
     var identifier: String? = null
+    var pushToken: String? = null
     var attributes: Map<String, Any>? = null
     var lastSeen: Instant? = null
 

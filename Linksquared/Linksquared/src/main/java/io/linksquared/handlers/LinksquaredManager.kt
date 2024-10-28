@@ -39,10 +39,11 @@ class LinksquaredManager(val context: Context, val application: Application, val
     private val eventsManager = EventsManager(context = context, apiKey = apiKey, linksquaredContext = linksquaredContext)
 
     private var lastItentHandledReference: WeakReference<Intent>? = null
-    /// A flag indicating whether the user is authenticated with the Linksquared backend.
-    private var authenticated = false
     /// Stores if attributes needs to be updated after auth
     private var shouldUpdateAttributes = false
+
+    /// A flag indicating whether the user is authenticated with the Linksquared backend.
+    var authenticated = false
 
     var identifier: String?
         get() = linksquaredContext.identifier
@@ -50,6 +51,14 @@ class LinksquaredManager(val context: Context, val application: Application, val
             linksquaredContext.identifier = value
             updateAttributesIfNeeded()
         }
+
+    var pushToken: String?
+        get() = linksquaredContext.pushToken
+        set(value) {
+            linksquaredContext.pushToken = value
+            updateAttributesIfNeeded()
+        }
+
 
     var attributes: Map<String, Any>?
         get() = linksquaredContext.attributes
@@ -241,7 +250,7 @@ class LinksquaredManager(val context: Context, val application: Application, val
         }
 
         GlobalScope.launch {
-            val result = linksquaredService.updateAttributes(identifier = identifier, attributes = attributes)
+            val result = linksquaredService.updateAttributes(identifier = identifier, attributes = attributes, pushToken = pushToken)
             when (result) {
                 is LSResult.Success -> {
                     shouldUpdateAttributes = false
